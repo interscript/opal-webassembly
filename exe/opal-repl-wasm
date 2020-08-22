@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+
+require 'opal/repl'
+require 'opal/webassembly'
+require 'opal/webassembly/processor'
+
+Opal.append_paths '.'
+
+repl = Opal::REPL.new.run ARGV.first

@@ -1,0 +1,14 @@
+$LOAD_PATH << __dir__+"/../../lib"
+
+file "simple.out.js" => ["simple.rb"] do
+  require 'opal/builder'
+  require 'opal/webassembly'
+  require 'opal/webassembly/processor'
+
+  builder = Opal::Builder.new
+  builder.append_paths(__dir__)
+  out = builder.build("simple")
+  File.write("simple.out.js", out)
+end
+
+task :default => "simple.out.js"
