@@ -2,6 +2,9 @@ require 'native'
 
 require 'webassembly/instance'
 require 'webassembly/module'
+require 'webassembly/table'
+require 'webassembly/memory'
+require 'webassembly/global'
 
 module WebAssembly
   @libs = {}
