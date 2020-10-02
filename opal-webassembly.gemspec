@@ -28,5 +28,4 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "opal"
-  spec.add_dependency "mini_racer"
 end

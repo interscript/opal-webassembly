@@ -26,24 +26,21 @@ module FFI
         end
 
         as = as.each_with_index.map do |a,ind|
-          type = args[ind]
-          case type
-          when :char, :uchar, :int8, :uint8, :short, :ushort, :int16, :uint16,
-               :int, :uint, :int32, :uint32, :long, :ulong, :int64, :uint64,
-               :long_long, :ulong_long
-            a.to_i
-          when :float, :double
-            a.to_f
-          when :pointer
-            a
-          when :string
-            raise NotImplementedError
-          when :bool
-            !!a
+          type = Type[args[ind]]
+          if type.respond_to :to_native_mem
+            type.to_native_mem(a, lib.memory)
+          else
+            type.to_native(a)
           end
         end
 
         ret = fun.call(*as)
+        type = Type[returns]
+        if type.respond_to :from_native_mem
+          type.from_native_mem(ret, lib.memory)
+        else
+          type.from_native(ret)
+        end
       end
     end
   end

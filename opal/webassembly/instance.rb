@@ -33,6 +33,10 @@ module WebAssembly
       exports
     end
 
+    def memory
+      exports[:memory]
+    end
+
     def each(&block)
       exports.each(&block)
     end
