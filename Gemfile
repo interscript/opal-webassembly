@@ -11,7 +11,7 @@ gem "pry"
 if File.directory? __dir__+"/../opal"
   gem "opal", path: __dir__+"/../opal"
 else
-  gem "opal", github: "hmdne/opal"
+  gem "opal"
 end
 
 gem "opal-rspec"
