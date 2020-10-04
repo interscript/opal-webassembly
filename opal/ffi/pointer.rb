@@ -242,12 +242,12 @@ module FFI
         type, count = address, type
         @memory = FFI.context.library.memory
         @address = FFI.context.malloc(FFI::Type[type].size * (count || 1)).address
-      elsif address.respond_to? :to_a
-        @memory, @address = address.to_a
+      elsif address.respond_to? :to_ary
+        @memory, @address = address.to_ary
         @size = size
-      elsif address.respond_to? :to_i
+      elsif address.respond_to? :to_int
         @memory = FFI.context.library.memory
-        @address = address.to_i
+        @address = address.to_int
         @size = size
       else
         raise TypeError, "Address has an invalid type"

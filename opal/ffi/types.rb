@@ -68,8 +68,26 @@ module FFI
 
     class POINTER < Integer
       def self.size; 4; end
-      def self.from_native_mem(x, memory); Pointer.new([memory, x]); end
-      def self.to_native(x); x ? x.address : FFI::Pointer::NULL; end
+
+      def self.from_native_mem(x, memory)
+        Pointer.new([memory, x])
+      end
+
+      def self.to_native(x)
+        if !x
+          0
+        elsif x.respond_to? :value # WebAssembly::Global?
+          x.value
+        elsif x.respond_to? :address # Struct? Pointer?
+          x.address
+        elsif x.respond_to? :to_int # Integer?
+          x.to_int
+        elsif x.respond_to? :to_str # String? It leaks though.
+          FFI::Pointer.from_string(x.to_str).address
+        else
+          raise ArgumentError, "Wrong argument #{x} can't be coerced to a pointer."
+        end
+      end
     end
 
     # TODO: Implement DataConverter
@@ -154,6 +172,8 @@ module FFI
         Type::WrappedStruct.new(name)
       elsif purpose == :struct
         name
+      else
+        raise ArgumentError, "Wrong purpose provided. Can't resolve type '#{name}'."
       end
     else
       raise TypeError, "unable to resolve type '#{name}'"
