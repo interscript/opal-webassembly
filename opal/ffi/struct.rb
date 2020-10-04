@@ -83,6 +83,15 @@ module FFI
         @pointer
       end
     end
+
+    def inspect
+      out = ["#<#{self.class.name}:#{"0x%08x" % self.address}: "]
+      out << self.members.keys.map do |key|
+        ":#{key} => #{self.[](key).inspect}"
+      end.join(", ")
+      out << ">"
+      out.join
+    end
   end
 
   class Field

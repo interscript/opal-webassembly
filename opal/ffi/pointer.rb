@@ -274,6 +274,10 @@ module FFI
       self.put(type, offset * type.size, value)
     end
 
+    def inspect
+      out = "#<#{self.class.name}:#{"0x%08x" % self.address} of #{self.type.inspect}>"
+    end
+
     NULL = new([nil, 0])
   end
 
