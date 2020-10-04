@@ -60,7 +60,7 @@ module FFI
     # Write +str+ in pointer's contents, or first +len+ bytes if
     # +len+ is not +nil+.
     def write_string(str, len=nil)
-      len = str.bytesize unless len
+      #len = str.bytesize unless len
       # Write the string data without NUL termination
       put_bytes(0, str, 0, len)
     end
@@ -104,6 +104,10 @@ module FFI
       self
     end
 
+    def pointer
+      self
+    end
+
     # @param [Symbol,Type] type of data to read
     # @return [Object]
     # Read pointer's contents as +type+
@@ -126,29 +130,129 @@ module FFI
     end
 
     def get_bytes(pos, len)
+      ary = @memory.buffer.to_a
+
+      out = []
+      i = 0
+      while i < len
+        out << ary[@address + pos + i]
+        i += 1
+      end
+
+      # We expect a binary string as an output of this function.
+      out.pack("c*").b # TODO upstream: #bytes is wrong!
     end
 
-    def put_bytes(src_pos, src, pos, len)
+    def put_bytes(pos, src, src_pos=0, len=nil)
+      if src.respond_to? :bytes
+        src = if src.encoding == Encoding::BINARY
+          src.chars.map(&:ord)
+        else
+          src.bytes
+        end
+      end
+      len ||= src.length - src_pos
+
+      ary = @memory.buffer.to_a
+      i = 0
+      while i < len
+        ary[@address + i + pos] = src[src_pos + i]
+        i += 1
+      end
     end
 
-    def get(type, pos, value)
+    def get(type, pos)
+      type = FFI::Type[type]
+      bytes = get_bytes(pos, type.size)
+      if type.respond_to? :to_native_mem
+        type.to_native_mem(type.unpack(bytes), @memory)
+      else
+        type.to_native(type.unpack(bytes))
+      end
     end
 
     def put(type, pos, value)
+      type = FFI::Type[type]
+      value = type.pack(value)
+      if type.respond_to? :from_native_mem
+        type.from_native_mem(value, @memory)
+      else
+        type.from_native(value)
+      end
+      put_bytes(pos, value)
     end
 
     def get_string(pos)
+      out = []
+      ary = @memory.buffer.to_a
+      pos += @address
+      loop do
+        byte = ary[pos]
+        break if byte == 0
+        out << byte
+        pos += 1
+      end
+      out.pack("c*").b
     end
 
     def put_string(pos, string)
+      put_bytes(pos, string)
+    end
+
+    def self.from_string src
+      bs = if src.encoding == Encoding::BINARY
+        src.chars.map(&:ord)
+      else
+        src.bytes
+      end
+      bs = bs + [0, 0]
+      out = new(:uint8, bs.count)
+      out.put_bytes(0, bs)
+      out
+    end
+
+    def self.alloc_out size, count, smh=false
+      new(:uint8, size*count)
+    end
+
+    def self.alloc_in size, count, smh=false
+      new(:uint8, size*count)
+    end
+
+    def method_missing method, *args
+      method = method.to_s
+      super
     end
 
     # Pointer in our case is more complex than a regular one: it's
     # [WebAssembly::Memory instance, uint32 address] since WebAssembly
     # "processes" run in separate address spaces.
-    def initialize(addr, type=nil)
-      @memory, @address = address
-      @type = type ? Type[type] : Type[:uchar8]
+    #
+    # Alternatively, memory can be deduced from wrapping inside
+    # Library#context.
+    def initialize(address, type=nil, size=nil)
+      if address.respond_to? :address
+        if address.respond_to? :memory
+          @memory = address.memory || FFI.context.library.memory
+        else
+          @memory = FFI.context.library.memory
+        end
+        @address = address.address
+      elsif address.respond_to?(:to_sym) || address.is_a?(Type) || address.is_a?(Class) # Allocation call
+        type, count = address, type
+        @memory = FFI.context.library.memory
+        @address = FFI.context.malloc(FFI::Type[type].size * (count || 1)).address
+      elsif address.respond_to? :to_a
+        @memory, @address = address.to_a
+        @size = size
+      elsif address.respond_to? :to_i
+        @memory = FFI.context.library.memory
+        @address = address.to_i
+        @size = size
+      else
+        raise TypeError, "Address has an invalid type"
+      end
+      @type = type ? FFI::Type[type] : FFI::Type[:uint8]
     end
 
     attr_accessor :memory, :address, :type
@@ -162,6 +266,16 @@ module FFI
       self.dup.tap { |i| i.address += offset * type.size }
     end
 
+    def [] offset
+      self.get(type, offset * type.size)
+    end
+
+    def []= offset, value
+      self.put(type, offset * type.size, value)
+    end
+
     NULL = new([nil, 0])
   end
+
+  AutoPointer = MemoryPointer = Buffer = Pointer
 end

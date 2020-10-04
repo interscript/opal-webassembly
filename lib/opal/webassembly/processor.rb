@@ -27,6 +27,14 @@ module Opal
         END
       end
 
+      # No source map support. Required to be mocked for tests.
+      def source_map
+        o = Object.new
+        def o.generated_code; ""; end
+        def o.to_h; {version: 3, sections: nil, sources: [], mappings: []}; end
+        o
+      end
+
       def requires
         ['webassembly'] + super
       end
