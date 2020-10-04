@@ -48,13 +48,6 @@ module FFI
           raise TypeError, "We can't pack/unpack a long double unfortunately."
         end
       end
-
-      def self.pack(x)
-        [x].pack(packformat)
-      end
-      def self.unpack(x)
-        x.unpack(packformat)
-      end
     end
 
     class VOID < self
@@ -81,6 +74,7 @@ module FFI
 
     # TODO: Implement DataConverter
     class WrappedStruct < self
+      def alignment; FFI::Type::POINTER.alignment; end
       def size; FFI::Type::POINTER.size; end
       def pack x; FFI::Type::POINTER.pack(x); end
       def unpack x; FFI::Type::POINTER.unpack(x); end
@@ -90,7 +84,7 @@ module FFI
       end
 
       def from_native_mem(x, memory)
-        @struct.new(FFI::Pointer.new([memory, x]))
+        @struct.new(FFI::Pointer.new([memory, x], @struct))
       end
 
       def to_native(x)
@@ -137,8 +131,8 @@ module FFI
     class INT64 < LONG_LONG; end
     class UINT64 < ULONG_LONG; end
 
-    def self.[] name
-      FFI.find_type name
+    def self.[] name, purpose = nil
+      FFI.find_type name, purpose: purpose
     end
   end
 
@@ -148,7 +142,7 @@ module FFI
 
   def self.add_typedef(old, new); typedef old, new; end
 
-  def self.find_type name, type_map = nil
+  def self.find_type name, type_map = nil, purpose: nil
     if name.is_a?(FFI::Type) || (name.is_a?(Class) && name <= FFI::Type)
       name
     elsif type_map && type_map.has_key?(name)
@@ -156,7 +150,11 @@ module FFI
     elsif TypeDefs.has_key?(name)
       TypeDefs[name]
     elsif name.is_a?(Class) && name <= FFI::Struct
-      Type::WrappedStruct.new(name)
+      if purpose == nil
+        Type::WrappedStruct.new(name)
+      elsif purpose == :struct
+        name
+      end
     else
       raise TypeError, "unable to resolve type '#{name}'"
     end

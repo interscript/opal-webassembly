@@ -164,21 +164,21 @@ module FFI
     def get(type, pos)
       type = FFI::Type[type]
       bytes = get_bytes(pos, type.size)
-      if type.respond_to? :to_native_mem
-        type.to_native_mem(type.unpack(bytes), @memory)
+      if type.respond_to? :from_native_mem
+        type.from_native_mem(type.unpack(bytes), @memory)
       else
-        type.to_native(type.unpack(bytes))
+        type.from_native(type.unpack(bytes))
       end
     end
 
     def put(type, pos, value)
       type = FFI::Type[type]
-      value = type.pack(value)
-      if type.respond_to? :from_native_mem
-        type.from_native_mem(value, @memory)
+      value = if type.respond_to? :to_native_mem
+        type.to_native_mem(value, @memory)
       else
-        type.from_native(value)
+        type.to_native(value)
       end
+      value = type.pack(value)
       put_bytes(pos, value)
     end
 

@@ -76,4 +76,64 @@ RSpec.describe FFI do
       expect(MyStr.size).to eq(22 * 4)
     end
   end
+
+  it "supports nested pointer structs" do
+    require 'corelib/array/pack'
+    require 'corelib/string/unpack'
+
+    class Struct2 < FFI::Struct
+      layout :age, :int,
+             :a, :int,
+             :b, :int,
+             :c, :int
+    end
+
+    class Struct1 < FFI::Struct
+      layout :id, :int,
+             :data, Struct2.ptr
+    end
+
+    Experiment.context do
+      expect(Struct2.size).to eq(16)
+      expect(Struct1.size).to eq(8)
+
+      struct = Struct1.new
+      struct2 = Struct2.new
+      struct[:data] = struct2
+      struct[:data][:age] = 27
+
+      expect(struct).to be_a(Struct1)
+      expect(struct[:data]).to be_a(Struct2)
+      expect(struct[:data][:age]).to eq(27)
+    end
+  end
+
+  it "supports nested structs" do
+    require 'corelib/array/pack'
+    require 'corelib/string/unpack'
+
+    class Struct4 < FFI::Struct
+      layout :age, :int,
+             :a, :int,
+             :b, :int,
+             :c, :int
+    end
+
+    class Struct3 < FFI::Struct
+      layout :id, :int,
+             :data, Struct4
+    end
+
+    Experiment.context do
+      expect(Struct4.size).to eq(16)
+      expect(Struct3.size).to eq(20)
+
+      struct = Struct3.new
+      struct[:data][:age] = 27
+
+      expect(struct).to be_a(Struct3)
+      expect(struct[:data]).to be_a(Struct4)
+      expect(struct[:data][:age]).to eq(27)
+    end
+  end
 end

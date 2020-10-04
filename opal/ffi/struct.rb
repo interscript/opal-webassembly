@@ -4,9 +4,25 @@ module FFI
       @size || 4
     end
 
-    # WebAssembly by_value == by_ptr
+    def self.alignment
+      @alignment ||= @layout&.values&.map(&:type)&.map(&:alignment)&.max || 4
+    end
+
     def self.by_value; self; end
-    def self.by_ptr; self; end
+    def self.by_ptr; FFI::Type::WrappedStruct.new(self); end
+
+    def self.pack x; raise ArgumentError, "Packing Struct directly is forbidden"; end
+    def self.unpack x; raise ArgumentError, "Unpacking Struct directly is forbidden"; end
+
+    def from_native_mem(x, memory)
+      new(FFI::Pointer.new([memory, x], self))
+    end
+
+    def to_native(x)
+      x.pointer.address
+    end
+
+    def self.ptr; by_ptr; end
 
     def self.layout *fs, **fields
       if fs.length > 0
@@ -23,10 +39,11 @@ module FFI
         if type.is_a? Array
           type, count = type
         end
-        type = FFI::Type[type]
+        type = FFI::Type[type, :struct]
 
         offset += 1 until (offset % type.alignment) == 0
         @layout[name] = Field.new(self, name, type, offset, count)
+
         if count
           offset += type.size * count
         else
@@ -77,6 +94,8 @@ module FFI
     def get from
       if count
         FFI::Pointer.new([from.pointer.memory, from.address + offset], type)
+      elsif type.is_a?(Class) && type <= FFI::Struct
+        type.new(FFI::Pointer.new([from.pointer.memory, from.address + offset], type))
       else
         from.pointer.get(type, offset)
       end
@@ -85,6 +104,8 @@ module FFI
     def set from, value
       if count
         raise ArgumentError, "Can't set an array #{name} of #{struct}."
+      elsif type.is_a?(Class) && type <= FFI::Struct
+        raise ArgumentError, "Can't set a nested struct #{name}."
       else
         from.pointer.put(type, offset, value)
       end
