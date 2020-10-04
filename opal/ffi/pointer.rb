@@ -274,6 +274,10 @@ module FFI
       self.put(type, offset * type.size, value)
     end
 
+    def resize(new_size)
+      self.address = FFI.context.realloc(self, new_size).address
+    end
+
     def inspect
       out = "#<#{self.class.name}:#{"0x%08x" % self.address} of #{self.type.inspect}>"
     end
