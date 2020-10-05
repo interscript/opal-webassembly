@@ -2,6 +2,9 @@
 
 WebAssembly support for Opal.
 
+== Opal Upstreaming
+Please refer to https://github.com/webdev778/interscript/blob/master/opal-onigmo.md#opal-webassembly[here]
+
 == Installation
 
 Add this line to your application's Gemfile:
