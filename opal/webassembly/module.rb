@@ -8,7 +8,7 @@ module WebAssembly
       buffer = buffer.to_n unless native? buffer
       %x{
         try {
-          new WebAssembly.Module(#{buffer})
+          return new WebAssembly.Module(#{buffer});
         } catch(e) {
           if (e.name == "RangeError") {
             #{raise WebAssembly::CantLoadSyncError}
