@@ -278,6 +278,10 @@ module FFI
       self.address = FFI.context.realloc(self, new_size).address
     end
 
+    def free
+      FFI.context.free(self)
+    end
+
     def inspect
       out = "#<#{self.class.name}:#{"0x%08x" % self.address} of #{self.type.inspect}>"
     end

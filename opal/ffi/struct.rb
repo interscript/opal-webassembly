@@ -84,6 +84,10 @@ module FFI
       end
     end
 
+    def free
+      @pointer.free
+    end
+
     def inspect
       out = ["#<#{self.class.name}:#{"0x%08x" % self.address}: "]
       out << self.members.keys.map do |key|
