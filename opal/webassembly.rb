@@ -14,8 +14,21 @@ module WebAssembly
   end
 
   def self.load_from_buffer(buffer, name)
-    mod = Module.new(buffer)
-    @libs[name] = Instance.new(mod)
+    begin
+      mod = Module.new(buffer)
+      @libs[name] = Instance.new(mod)
+      loaded(name)
+    rescue CantLoadSyncError
+      # We are in Chromium which disallows loading a module synchronously
+      %x{
+        WebAssembly.instantiate(#{buffer}).then(function(d) {
+          #{
+            @libs[name] = `d.instance`
+            loaded(name)
+          }
+        })
+      }
+    end
   end
 
   %x{
@@ -60,6 +73,35 @@ module WebAssembly
 
   def self.load_from_base64(base64, name)
     self.load_from_buffer(`base64_to_arraybuffer(#{base64})`, name)
+  end
+
+  @waiting_for = []
+
+  def self.wait_for(*libs, &block)
+    prom = nil
+    unless block_given?
+      prom = `new Promise(function(ok, fail) {
+        #{
+          block = `ok`
+        }
+      })`
+    end
+
+    if libs.all? { |lib| @libs[lib] }
+      yield
+    else
+      @waiting_for << [libs, block]
+    end
+
+    prom
+  end
+
+  def self.loaded(lib)
+    @waiting_for.each do |libs, block|
+      if libs.all? { |lib| @libs[lib] }
+        block.()
+      end
+    end
   end
 
   def self.[](name)
